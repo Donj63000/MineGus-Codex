@@ -99,6 +99,18 @@ public final class HouseBuilder {
     }
 
     /* ------------------------------------------------------------------ */
+    /*  NOUVELLE MÉTHODE utilitaire : peint 1 bloc de route               */
+    /* ------------------------------------------------------------------ */
+    public static void paintRoad(Queue<Runnable> q,
+                                 List<Material> palette,
+                                 int x, int y, int z,
+                                 TerrainManager.SetBlock sb) {
+        Random R = new Random();
+        Material m = palette.get(R.nextInt(palette.size()));
+        q.add(() -> sb.set(x, y, z, m));
+    }
+
+    /* ------------------------------------------------------------------ */
     /* CHAMP (farmland + eau + cultures)                                  */
     /* ------------------------------------------------------------------ */
     public static List<Runnable> buildFarm(Location base,
@@ -312,6 +324,24 @@ public final class HouseBuilder {
         tasks.add(() -> sb.set(ox + craftL[0], oy + 1, oz + craftL[1], Material.CRAFTING_TABLE));
 
         return tasks;
+    }
+
+    /* ------------------------------------------------------------------ */
+    /*  SURCHARGE courte de buildHouse (compatible avec Disposition)      */
+    /* ------------------------------------------------------------------ */
+    public static List<Runnable> buildHouse(int x, int y, int z,
+                                            int size, int rot,
+                                            List<Material> roadPalette,
+                                            List<Material> roofPalette,
+                                            List<Material> wallLogs,
+                                            List<Material> wallPlanks,
+                                            TerrainManager.SetBlock sb) {
+        // redirige vers la version longue mais avec des choix aléatoires simples
+        return buildHouse(null,
+                          new Location(null, x, y, z),
+                          size, rot,
+                          wallLogs, wallPlanks, roofPalette,
+                          sb, new Random(), 0);
     }
 
     /* ------------------------------------------------------------------ */

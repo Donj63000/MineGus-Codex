@@ -2,88 +2,90 @@ package org.example.village;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.block.BlockState;
-import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
-import java.util.Map;
-import java.util.HashMap;
 import java.util.Queue;
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Décide qui est construit où : grilles, routes, décorations, lampadaires, etc.
- * Ne contient AUCUN code de géométrie interne des bâtiments : tout est délégué
- * à {@link HouseBuilder}.
+ * Classe utilitaire (toutes les méthodes sont statiques).
  */
 public final class Disposition {
 
-    /* ========= état plugin ========= */
-    private final JavaPlugin plugin;
-    private YamlConfiguration cfg;
+    private Disposition() {}
 
-    private int smallSize, bigSize, spacing, roadHalf, batch, entityTTL;
-    private Material wallMat;
-    private List<Material> roadPalette, roofPalette, wallLogs, wallPlanks, cropSeeds;
+    /** Point d\u2019entr\u00e9e appel\u00e9 par {@link org.example.Village}. */
+    public static void buildVillage(JavaPlugin plugin,
+                                    Location center,
+                                    int rows, int cols, int baseY,
+                                    int smallSize, int bigSize, int spacing, int roadHalf,
+                                    List<Material> wallLogs, List<Material> wallPlanks,
+                                    List<Material> roofPalette,
+                                    List<Material> roadPalette, List<Material> cropSeeds,
+                                    Queue<Runnable> tasks,
+                                    TerrainManager.SetBlock sb,
+                                    int villageId) {
 
-    /* ========= undo / tp ========= */
-    private record Snap(BlockState state) {}
-    private final Map<Integer, List<Snap>> undoMap = new HashMap<>();
-    private final Map<Integer, Location>   tpMap   = new HashMap<>();
-    private final AtomicInteger counter = new AtomicInteger(1);
+        scheduleLayout(plugin, center, rows, cols, baseY, villageId,
+                       smallSize, spacing, roadHalf,
+                       roadPalette, roofPalette, wallLogs, wallPlanks, cropSeeds,
+                       tasks, sb);
+    }
 
     /* ------------------------------------------------------------------ */
-    /* MÉTHODES PUBLIQUES                                                 */
+    /*  IMPL\u00c9MENTATION D\u00c9TAILL\u00c9E                                          */
     /* ------------------------------------------------------------------ */
-
-    /**
-     * Place l’ensemble des constructions « statiques » (bâtiments, routes,
-     * lampadaires, clôtures, etc.) dans les files de tâches {@code q}.
-     */
-    public void scheduleLayout(Location center,
-                               int rows, int cols, int baseY, int villageId,
-                               Queue<Runnable> q, TerrainManager.SetBlock sb) {
+    private static void scheduleLayout(JavaPlugin plugin,
+                                       Location center,
+                                       int rows, int cols, int baseY, int villageId,
+                                       int smallSize, int spacing, int roadHalf,
+                                       List<Material> roadPalette, List<Material> roofPalette,
+                                       List<Material> wallLogs, List<Material> wallPlanks,
+                                       List<Material> cropSeeds,
+                                       Queue<Runnable> q, TerrainManager.SetBlock sb) {
 
         int originX = center.getBlockX() - (cols - 1) * spacing / 2;
         int originZ = center.getBlockZ() - (rows - 1) * spacing / 2;
         Random rng  = new Random();
 
-        /* --- grille de routes + bâtiments --- */
+        /* --- grille routes + lots --- */
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
 
-                /* 1) route (axe N‑S) */
+                /* 1) bande de route (axe N\u2011S) */
                 int roadX = originX + c * spacing;
                 for (int dz = -roadHalf; dz <= roadHalf; dz++) {
                     int z = originZ + r * spacing + dz;
                     HouseBuilder.paintRoad(q, roadPalette, roadX, baseY, z, sb);
                 }
 
-                /* 2) bâtiment */
+                /* 2) choix b\u00e2timent */
                 int lotX = originX + c * spacing - smallSize / 2;
                 int lotZ = originZ + r * spacing - smallSize / 2;
                 double roll = rng.nextDouble();
 
-                if (roll < 0.60) { /* maison « small » */
+                if (roll < 0.60) {
                     q.addAll(HouseBuilder.buildHouse(
-                            lotX, baseY + 1, lotZ,
-                            smallSize, rng.nextInt(4), roadPalette,
-                            roofPalette, wallLogs, wallPlanks, sb));
-                } else if (roll < 0.85) { /* ferme (plantations) */
+                             plugin,
+                             new Location(center.getWorld(), lotX, baseY + 1, lotZ),
+                             smallSize, rng.nextInt(4),
+                             wallLogs, wallPlanks, roofPalette,
+                             sb, rng, villageId));
+                } else if (roll < 0.85) {
                     q.addAll(HouseBuilder.buildFarm(
-                            lotX, baseY + 1, lotZ,
-                            smallSize, cropSeeds, sb));
-                } else {               /* enclos à animaux */
+                             new Location(center.getWorld(), lotX, baseY + 1, lotZ),
+                             cropSeeds, sb));
+                } else {
                     q.addAll(HouseBuilder.buildPen(
-                            plugin, lotX, baseY + 1, lotZ,
-                            smallSize, villageId, sb));
+                             plugin,
+                             new Location(center.getWorld(), lotX, baseY + 1, lotZ),
+                             villageId, sb));
                 }
             }
         }
 
-        /* --- lampadaires sur chaque carrefour --- */
+        /* --- lampadaires aux carrefours --- */
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
                 int x = originX + c * spacing;
