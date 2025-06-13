@@ -1,0 +1,43 @@
+name: MinePlugin
+version: 1.1-SNAPSHOT          # ↑ incrémente si tu veux distinguer les builds
+main: org.example.MinePlugin
+api-version: "1.21.4"
+
+commands:
+
+  army:
+    description: Fait apparaître 5 loups et 2 golems pour te protéger
+    usage: /army
+
+  ping:
+    description: Vérifie la latence (« Pong! »)
+    usage: /ping
+
+  mineur:
+    description: Génère un PNJ mineur et une zone de minage automatique
+    usage: /mineur <largeur>x<longueur>
+
+  champ:
+    description: Crée un champ automatisé (labour, plantation, récolte)
+    usage: /champ <largeur>x<longueur>
+
+  foret:
+    description: Crée une forêt automatisée (plantation et coupe d’arbres)
+    usage: /foret <largeur>x<longueur>
+
+  village:
+    description: Génère et gère un village PNJ complet
+    usage: |
+      /village <lignes>x<colonnes>
+      /village undo [id]
+      /village list
+      /village tp <id>
+      /village reload
+
+  eleveur:
+    description: Crée un enclos premium pour l’élevage automatisé
+    usage: /eleveur <largeur>x<longueur>
+
+  armure:
+    description: Donne l’« Armure du roi » à un joueur
+    usage: /armure
