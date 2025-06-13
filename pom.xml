@@ -19,7 +19,7 @@
         <!-- Le plugin doit être compilé en Java 17 -->
         <maven.compiler.release>17</maven.compiler.release>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <paper.version>1.21.4-R0.1-SNAPSHOT</paper.version>            <!-- Paper API -->
+        <paper.version>1.20.6-R0.1-SNAPSHOT</paper.version>            <!-- Paper API -->
     </properties>
 
     <!-- ========== DÉPÔTS ========== -->

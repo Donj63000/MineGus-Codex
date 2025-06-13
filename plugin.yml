@@ -1,7 +1,7 @@
 name: MinePlugin
 version: 1.1-SNAPSHOT          # ↑ incrémente si tu veux distinguer les builds
 main: org.example.MinePlugin
-api-version: "1.21.4"
+api-version: "1.20"
 
 commands:
 
