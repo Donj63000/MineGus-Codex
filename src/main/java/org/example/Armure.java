@@ -18,6 +18,22 @@ import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.bukkit.scheduler.BukkitTask;
 
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Player;
+import org.bukkit.entity.Projectile;
+import org.bukkit.entity.Wolf;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
 /**
  * Commande /armure : donne l'Armure du roi GIDON.
  *
@@ -107,7 +123,7 @@ public final class Armure implements CommandExecutor, Listener {
 
             // Enchantements normalisés
             meta.addEnchant(Enchantment.PROTECTION, 4, true);
-            meta.addEnchant(Enchantment.DENSITY, 3, true); // Unbreaking
+            meta.addEnchant(Enchantment.DURABILITY, 3, true); // Unbreaking
             meta.addEnchant(Enchantment.MENDING, 1, true);
 
             item.setItemMeta(meta);
