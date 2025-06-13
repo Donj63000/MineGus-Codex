@@ -2,11 +2,16 @@ package org.example.village;
 
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.plugin.Plugin;
+import org.bukkit.block.BlockState;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.Queue;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Décide qui est construit où : grilles, routes, décorations, lampadaires, etc.
@@ -15,73 +20,65 @@ import java.util.Random;
  */
 public final class Disposition {
 
-    private Disposition() { /* utilitaire : pas d’instanciation */ }
+    /* ========= état plugin ========= */
+    private final JavaPlugin plugin;
+    private YamlConfiguration cfg;
 
-    /* ===================================================== */
-    /* PUBLIC API                                            */
-    /* ===================================================== */
+    private int smallSize, bigSize, spacing, roadHalf, batch, entityTTL;
+    private Material wallMat;
+    private List<Material> roadPalette, roofPalette, wallLogs, wallPlanks, cropSeeds;
+
+    /* ========= undo / tp ========= */
+    private record Snap(BlockState state) {}
+    private final Map<Integer, List<Snap>> undoMap = new HashMap<>();
+    private final Map<Integer, Location>   tpMap   = new HashMap<>();
+    private final AtomicInteger counter = new AtomicInteger(1);
+
+    /* ------------------------------------------------------------------ */
+    /* MÉTHODES PUBLIQUES                                                 */
+    /* ------------------------------------------------------------------ */
 
     /**
-     * Génère un village complet (hors terrassement et murs périphériques).
+     * Place l’ensemble des constructions « statiques » (bâtiments, routes,
+     * lampadaires, clôtures, etc.) dans les files de tâches {@code q}.
      */
-    public static void buildVillage(Plugin plugin,
-                                    Location center,
-                                    int rows, int cols, int baseY,
-                                    int small, int big, int spacing, int roadHalf,
-                                    List<Material> logs,   List<Material> planks,
-                                    List<Material> roofs,  List<Material> roadPalette,
-                                    List<Material> crops,
-                                    Queue<Runnable> q,
-                                    TerrainManager.SetBlock sb,
-                                    int villageId) {
+    public void scheduleLayout(Location center,
+                               int rows, int cols, int baseY, int villageId,
+                               Queue<Runnable> q, TerrainManager.SetBlock sb) {
 
-        Random rng = new Random();
+        int originX = center.getBlockX() - (cols - 1) * spacing / 2;
+        int originZ = center.getBlockZ() - (rows - 1) * spacing / 2;
+        Random rng  = new Random();
 
-        /* --- puits + cloche au centre --- */
-        q.addAll(HouseBuilder.buildWell(center, sb));
-        q.addAll(HouseBuilder.buildBell(center.clone().add(1, 1, 0), sb));
-
-        /* --- origine (coin nord‑ouest) --- */
-        int originX = center.getBlockX() - ((cols - 1) * spacing) / 2;
-        int originZ = center.getBlockZ() - ((rows - 1) * spacing) / 2;
-
-        /* --- boucle principale : chaque case du quadrillage --- */
+        /* --- grille de routes + bâtiments --- */
         for (int r = 0; r < rows; r++) {
             for (int c = 0; c < cols; c++) {
 
-                boolean bigHouse = rng.nextBoolean();
-                int size = bigHouse ? big : small;
-                int hx = originX + c * spacing;
-                int hz = originZ + r * spacing;
+                /* 1) route (axe N‑S) */
+                int roadX = originX + c * spacing;
+                for (int dz = -roadHalf; dz <= roadHalf; dz++) {
+                    int z = originZ + r * spacing + dz;
+                    HouseBuilder.paintRoad(q, roadPalette, roadX, baseY, z, sb);
+                }
 
-                /* façade tournée vers la route la plus proche */
-                int rot =
-                        (r == 0)               ? 180 :
-                                (r == rows - 1)        ?   0 :
-                                        (c < cols / 2)         ?  90 : 270;
-
-                Location base = new Location(center.getWorld(), hx, baseY, hz);
-
-                /* maison */
-                q.addAll(HouseBuilder.buildHouse(plugin, base, size, rot,
-                        logs, planks, roofs, sb, rng, villageId));
-
-                /* route de la maison → centre */
-                q.addAll(HouseBuilder.buildRoad(
-                        center.getBlockX(), center.getBlockZ(),
-                        hx, hz, baseY, roadHalf, roadPalette, sb));
-
-                /* décor latéral (champ ou enclos) */
-                Location side = base.clone().add(
-                        rot == 90  ? -size - 4 : rot == 270 ?  size + 4 : 0,
-                        0,
-                        rot ==   0 ? -size - 4 : rot == 180 ?  size + 4 : 0);
-
+                /* 2) bâtiment */
+                int lotX = originX + c * spacing - smallSize / 2;
+                int lotZ = originZ + r * spacing - smallSize / 2;
                 double roll = rng.nextDouble();
-                if (roll < 0.25) {                 // 25 % champs
-                    q.addAll(HouseBuilder.buildFarm(side, crops, sb));
-                } else if (roll < 0.40) {          // 15 % enclos
-                    q.addAll(HouseBuilder.buildPen(plugin, side, villageId, sb));
+
+                if (roll < 0.60) { /* maison « small » */
+                    q.addAll(HouseBuilder.buildHouse(
+                            lotX, baseY + 1, lotZ,
+                            smallSize, rng.nextInt(4), roadPalette,
+                            roofPalette, wallLogs, wallPlanks, sb));
+                } else if (roll < 0.85) { /* ferme (plantations) */
+                    q.addAll(HouseBuilder.buildFarm(
+                            lotX, baseY + 1, lotZ,
+                            smallSize, cropSeeds, sb));
+                } else {               /* enclos à animaux */
+                    q.addAll(HouseBuilder.buildPen(
+                            plugin, lotX, baseY + 1, lotZ,
+                            smallSize, villageId, sb));
                 }
             }
         }
