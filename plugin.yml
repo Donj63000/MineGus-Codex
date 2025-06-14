@@ -1,0 +1,20 @@
+name: MINEGUS2.0
+main: org.example.MinePlugin
+version: 1.0
+commands:
+  army:
+    description: Summon guardians
+  ping:
+    description: Simple connectivity test
+  champ:
+    description: Manage fields
+  foret:
+    description: Manage forests
+  mineur:
+    description: Manage mining sessions
+  village:
+    description: Generate villages
+  eleveur:
+    description: Manage ranches
+  armure:
+    description: Grant special armor
